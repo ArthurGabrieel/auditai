@@ -4,6 +4,6 @@ export const routes: Routes = [
   {
     path: '',
     loadComponent: () =>
-      import('./screens/auditoria-page.component').then((m) => m.AuditoriaPageComponent)
+      import('./screens/audit-page.component').then((m) => m.AuditPageComponent)
   }
 ];

@@ -28,11 +28,10 @@
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
-            "buildTarget": "auditai-frontend:build"
+            "browserTarget": "auditai-frontend:build"
           }
         }
       }
     }
-  },
-  "defaultProject": "auditai-frontend"
+  }
 }
