@@ -1,0 +1,32 @@
+# macOS
+.DS_Store
+
+# Env/local config
+.env
+.env.local
+.idea/
+.vscode/
+*.iml
+
+# Logs
+*.log
+logs/
+
+# Java / Maven / Spring
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+*.class
+
+# Angular / Node
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/.cache/
+frontend/coverage/
+
+# Test artifacts
+coverage/
+test-results/
+
+# Docker/local volumes
+postgres_data/
