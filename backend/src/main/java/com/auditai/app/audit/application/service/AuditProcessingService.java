@@ -1,17 +1,16 @@
 package com.auditai.app.audit.application.service;
 
+import com.auditai.app.audit.application.exception.AiProviderUnavailableException;
+import com.auditai.app.audit.application.port.out.AuditAiAnalyzerPort;
 import com.auditai.app.audit.application.port.out.AuditRepositoryPort;
 import com.auditai.app.audit.domain.Audit;
 import com.auditai.app.audit.domain.AuditStatus;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
-import java.time.Clock;
-import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -19,10 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuditProcessingService {
 
   private final AuditRepositoryPort auditRepositoryPort;
+  private final AuditProcessingStateService auditProcessingStateService;
+  private final AuditAiAnalyzerPort auditAiAnalyzerPort;
   private final MeterRegistry meterRegistry;
-  private final Clock clock;
 
-  @Transactional
   public void process(UUID auditId) {
     Timer.Sample sample = Timer.start(meterRegistry);
     Audit audit = auditRepositoryPort.findById(auditId)
@@ -34,22 +33,22 @@ public class AuditProcessingService {
     }
 
     try {
-      audit.setStatus(AuditStatus.PROCESSING);
-      audit.setProcessingAttempts(audit.getProcessingAttempts() + 1);
-      auditRepositoryPort.save(audit);
+      auditProcessingStateService.markAttemptStarted(auditId);
 
-      // Placeholder for actual LLM analysis.
-      audit.setAiOpinion("No critical issues found in initial automated review.");
-      audit.setStatus(AuditStatus.COMPLETED);
-      audit.setCompletedAt(LocalDateTime.now(clock));
-      auditRepositoryPort.save(audit);
+      String aiOpinion = auditAiAnalyzerPort.analyze(audit.getTimeLogContent());
+      auditProcessingStateService.markCompleted(auditId, aiOpinion);
 
       meterRegistry.counter("audit_processing_success_total").increment();
-      log.info("audit_processed auditId={} status={}", auditId, audit.getStatus());
+      log.info("audit_processed auditId={} status={}", auditId, AuditStatus.COMPLETED);
+    } catch (AiProviderUnavailableException ex) {
+      String clearMessage = "AI provider temporarily unavailable (Gemini 503). Message scheduled for retry.";
+      auditProcessingStateService.markPendingForRetry(auditId, clearMessage);
+      meterRegistry.counter("audit_processing_ai_unavailable_total").increment();
+      meterRegistry.counter("audit_processing_error_total").increment();
+      log.warn("audit_processing_ai_unavailable auditId={} reason={}", auditId, clearMessage);
+      throw new IllegalStateException(clearMessage, ex);
     } catch (RuntimeException ex) {
-      audit.setStatus(AuditStatus.ERROR);
-      audit.setErrorReason(ex.getMessage());
-      auditRepositoryPort.save(audit);
+      auditProcessingStateService.markError(auditId, ex.getMessage());
       meterRegistry.counter("audit_processing_error_total").increment();
       throw ex;
     } finally {

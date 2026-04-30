@@ -7,6 +7,35 @@
       "defaultValue": "/v1"
     },
     {
+      "name": "app.ai.gemini.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Enable Gemini integration via LangChain4j.",
+      "defaultValue": false
+    },
+    {
+      "name": "app.ai.gemini.api-key",
+      "type": "java.lang.String",
+      "description": "Gemini API key."
+    },
+    {
+      "name": "app.ai.gemini.model",
+      "type": "java.lang.String",
+      "description": "Gemini model name used by LangChain4j.",
+      "defaultValue": "gemini-2.5-flash"
+    },
+    {
+      "name": "app.ai.gemini.timeout-ms",
+      "type": "java.lang.Integer",
+      "description": "Timeout in milliseconds for each Gemini call.",
+      "defaultValue": 15000
+    },
+    {
+      "name": "app.ai.gemini.temperature",
+      "type": "java.lang.Double",
+      "description": "Sampling temperature for Gemini calls.",
+      "defaultValue": 0.2
+    },
+    {
       "name": "app.audit.processing.exchange",
       "type": "java.lang.String",
       "description": "RabbitMQ exchange used for audit processing messages.",

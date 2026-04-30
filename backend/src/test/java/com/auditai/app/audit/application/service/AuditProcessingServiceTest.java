@@ -2,19 +2,19 @@ package com.auditai.app.audit.application.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
 
+import com.auditai.app.audit.application.exception.AiProviderUnavailableException;
 import com.auditai.app.audit.application.port.out.AuditRepositoryPort;
+import com.auditai.app.audit.application.port.out.AuditAiAnalyzerPort;
 import com.auditai.app.audit.domain.Audit;
 import com.auditai.app.audit.domain.AuditStatus;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,17 +26,23 @@ class AuditProcessingServiceTest {
 
   @Mock
   private AuditRepositoryPort auditRepositoryPort;
+  @Mock
+  private AuditAiAnalyzerPort auditAiAnalyzerPort;
+  @Mock
+  private AuditProcessingStateService auditProcessingStateService;
 
   private AuditProcessingService auditProcessingService;
+  private SimpleMeterRegistry meterRegistry;
 
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
-    Clock fixedClock = Clock.fixed(Instant.parse("2026-04-29T20:00:00Z"), ZoneOffset.UTC);
+    meterRegistry = new SimpleMeterRegistry();
     auditProcessingService = new AuditProcessingService(
         auditRepositoryPort,
-        new SimpleMeterRegistry(),
-        fixedClock
+        auditProcessingStateService,
+        auditAiAnalyzerPort,
+        meterRegistry
     );
   }
 
@@ -45,18 +51,18 @@ class AuditProcessingServiceTest {
     UUID auditId = UUID.randomUUID();
     Audit pending = Audit.builder()
         .id(auditId)
+        .timeLogContent("sample")
         .status(AuditStatus.PENDING)
         .processingAttempts(0)
         .build();
     when(auditRepositoryPort.findById(auditId)).thenReturn(Optional.of(pending));
     when(auditRepositoryPort.save(any(Audit.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(auditAiAnalyzerPort.analyze(any(String.class))).thenReturn("analysis");
 
     auditProcessingService.process(auditId);
 
-    assertEquals(AuditStatus.COMPLETED, pending.getStatus());
-    assertEquals(1, pending.getProcessingAttempts());
-    assertEquals(LocalDateTime.of(2026, 4, 29, 20, 0), pending.getCompletedAt());
-    verify(auditRepositoryPort, times(2)).save(any(Audit.class));
+    verify(auditProcessingStateService, times(1)).markAttemptStarted(auditId);
+    verify(auditProcessingStateService, times(1)).markCompleted(auditId, "analysis");
   }
 
   @Test
@@ -71,7 +77,7 @@ class AuditProcessingServiceTest {
 
     auditProcessingService.process(auditId);
 
-    verify(auditRepositoryPort, times(0)).save(any(Audit.class));
+    verify(auditProcessingStateService, never()).markAttemptStarted(any(UUID.class));
   }
 
   @Test
@@ -79,20 +85,40 @@ class AuditProcessingServiceTest {
     UUID auditId = UUID.randomUUID();
     Audit pending = Audit.builder()
         .id(auditId)
+        .timeLogContent("sample")
         .status(AuditStatus.PENDING)
         .processingAttempts(0)
         .build();
     when(auditRepositoryPort.findById(auditId)).thenReturn(Optional.of(pending));
-    when(auditRepositoryPort.save(any(Audit.class)))
-        .thenReturn(pending)
-        .thenThrow(new RuntimeException("LLM timeout"))
-        .thenReturn(pending);
+    when(auditAiAnalyzerPort.analyze(any(String.class))).thenThrow(new RuntimeException("LLM timeout"));
 
     RuntimeException exception = assertThrows(RuntimeException.class, () -> auditProcessingService.process(auditId));
 
     assertEquals("LLM timeout", exception.getMessage());
-    assertEquals(AuditStatus.ERROR, pending.getStatus());
-    assertEquals("LLM timeout", pending.getErrorReason());
-    verify(auditRepositoryPort, times(3)).save(any(Audit.class));
+    verify(auditProcessingStateService, times(1)).markAttemptStarted(auditId);
+    verify(auditProcessingStateService, times(1)).markError(auditId, "LLM timeout");
+  }
+
+  @Test
+  void shouldExposeClearMessageAndMetricWhenAiProviderIsUnavailable() {
+    UUID auditId = UUID.randomUUID();
+    Audit pending = Audit.builder()
+        .id(auditId)
+        .timeLogContent("sample")
+        .status(AuditStatus.PENDING)
+        .processingAttempts(0)
+        .build();
+    when(auditRepositoryPort.findById(auditId)).thenReturn(Optional.of(pending));
+    when(auditAiAnalyzerPort.analyze(any(String.class)))
+        .thenThrow(new AiProviderUnavailableException("503", new RuntimeException("provider unavailable")));
+
+    RuntimeException exception = assertThrows(RuntimeException.class, () -> auditProcessingService.process(auditId));
+
+    assertTrue(exception.getMessage().contains("temporarily unavailable"));
+    assertEquals(1.0, meterRegistry.counter("audit_processing_ai_unavailable_total").count());
+    assertEquals(1.0, meterRegistry.counter("audit_processing_error_total").count());
+    verify(auditProcessingStateService, times(1)).markAttemptStarted(auditId);
+    verify(auditProcessingStateService, times(1))
+        .markPendingForRetry(auditId, "AI provider temporarily unavailable (Gemini 503). Message scheduled for retry.");
   }
 }

@@ -51,6 +51,13 @@ springdoc:
 app:
   api:
     version-prefix: /v1
+  ai:
+    gemini:
+      enabled: ${APP_AI_GEMINI_ENABLED:false}
+      api-key: ${APP_AI_GEMINI_API_KEY:}
+      model: ${APP_AI_GEMINI_MODEL:gemini-2.5-flash}
+      timeout-ms: ${APP_AI_GEMINI_TIMEOUT_MS:15000}
+      temperature: ${APP_AI_GEMINI_TEMPERATURE:0.2}
   audit:
     processing:
       exchange: audit.exchange
