@@ -1,6 +1,7 @@
 package com.auditai.app.audit.application.service;
 
 import com.auditai.app.audit.application.port.out.AuditRepositoryPort;
+import com.auditai.app.audit.application.port.out.AuditRealtimeNotifierPort;
 import com.auditai.app.audit.domain.Audit;
 import com.auditai.app.audit.domain.AuditStatus;
 import java.time.Clock;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuditProcessingStateService {
 
   private final AuditRepositoryPort auditRepositoryPort;
+  private final AuditRealtimeNotifierPort auditRealtimeNotifierPort;
   private final Clock clock;
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -23,7 +25,8 @@ public class AuditProcessingStateService {
     Audit audit = load(auditId);
     audit.setStatus(AuditStatus.PROCESSING);
     audit.setProcessingAttempts(audit.getProcessingAttempts() + 1);
-    auditRepositoryPort.save(audit);
+    Audit saved = auditRepositoryPort.save(audit);
+    auditRealtimeNotifierPort.notifyAuditUpdated(saved);
   }
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -32,7 +35,8 @@ public class AuditProcessingStateService {
     audit.setAiOpinion(aiOpinion);
     audit.setStatus(AuditStatus.COMPLETED);
     audit.setCompletedAt(LocalDateTime.now(clock));
-    auditRepositoryPort.save(audit);
+    Audit saved = auditRepositoryPort.save(audit);
+    auditRealtimeNotifierPort.notifyAuditUpdated(saved);
   }
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -40,7 +44,8 @@ public class AuditProcessingStateService {
     Audit audit = load(auditId);
     audit.setStatus(AuditStatus.PENDING);
     audit.setErrorReason(errorReason);
-    auditRepositoryPort.save(audit);
+    Audit saved = auditRepositoryPort.save(audit);
+    auditRealtimeNotifierPort.notifyAuditUpdated(saved);
   }
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -48,7 +53,8 @@ public class AuditProcessingStateService {
     Audit audit = load(auditId);
     audit.setStatus(AuditStatus.ERROR);
     audit.setErrorReason(errorReason);
-    auditRepositoryPort.save(audit);
+    Audit saved = auditRepositoryPort.save(audit);
+    auditRealtimeNotifierPort.notifyAuditUpdated(saved);
   }
 
   private Audit load(UUID auditId) {
