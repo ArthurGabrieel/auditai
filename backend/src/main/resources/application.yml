@@ -3,10 +3,11 @@ spring:
     servlet:
       path: /api
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/auditai}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/auditai}
     username: ${SPRING_DATASOURCE_USERNAME:auditai}
     password: ${SPRING_DATASOURCE_PASSWORD:auditai}
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: validate
     properties:
@@ -20,6 +21,9 @@ spring:
     port: ${SPRING_RABBITMQ_PORT:5672}
     username: ${SPRING_RABBITMQ_USERNAME:guest}
     password: ${SPRING_RABBITMQ_PASSWORD:guest}
+    listener:
+      simple:
+        default-requeue-rejected: false
 
 management:
   endpoints:
@@ -33,3 +37,23 @@ management:
 
 server:
   port: ${SERVER_PORT:8080}
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] %logger{36} requestId=%X{requestId} - %msg%n"
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+app:
+  api:
+    version-prefix: /v1
+  audit:
+    processing:
+      exchange: audit.exchange
+      routing-key: audit.process
+      queue: audit.process
+      dlq: audit.process.dlq

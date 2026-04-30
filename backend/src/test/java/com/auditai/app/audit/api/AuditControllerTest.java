@@ -45,7 +45,7 @@ class AuditControllerTest {
         .build();
     when(createAuditUseCase.create(any())).thenReturn(audit);
 
-    mockMvc.perform(post("/audits")
+    mockMvc.perform(post("/v1/audits")
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(new CreateAuditRequest("log content"))))
         .andExpect(status().isAccepted())
@@ -56,7 +56,7 @@ class AuditControllerTest {
 
   @Test
   void shouldReturn400WhenPayloadIsInvalid() throws Exception {
-    mockMvc.perform(post("/audits")
+    mockMvc.perform(post("/v1/audits")
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(new CreateAuditRequest(" "))))
         .andExpect(status().isBadRequest())

@@ -5,6 +5,8 @@ import com.auditai.app.audit.domain.Audit;
 import com.auditai.app.audit.infrastructure.persistence.entity.AuditJpaEntity;
 import com.auditai.app.audit.infrastructure.persistence.mapper.AuditPersistenceMapper;
 import com.auditai.app.audit.infrastructure.persistence.repository.SpringDataAuditRepository;
+import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -19,5 +21,10 @@ public class AuditRepositoryAdapter implements AuditRepositoryPort {
   public Audit save(Audit audit) {
     AuditJpaEntity saved = springDataAuditRepository.save(mapper.toEntity(audit));
     return mapper.toDomain(saved);
+  }
+
+  @Override
+  public Optional<Audit> findById(UUID id) {
+    return springDataAuditRepository.findById(id).map(mapper::toDomain);
   }
 }

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.when;
 
 import com.auditai.app.audit.application.port.in.command.CreateAuditCommand;
+import com.auditai.app.audit.application.port.out.AuditProcessingPublisherPort;
 import com.auditai.app.audit.application.port.out.AuditRepositoryPort;
 import com.auditai.app.audit.domain.Audit;
 import com.auditai.app.audit.domain.AuditStatus;
@@ -13,6 +14,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -24,6 +26,8 @@ class CreateAuditServiceTest {
 
   @Mock
   private AuditRepositoryPort auditRepositoryPort;
+  @Mock
+  private AuditProcessingPublisherPort auditProcessingPublisherPort;
 
   private CreateAuditService createAuditService;
 
@@ -31,7 +35,12 @@ class CreateAuditServiceTest {
   void setUp() {
     MockitoAnnotations.openMocks(this);
     Clock fixedClock = Clock.fixed(Instant.parse("2026-04-29T20:00:00Z"), ZoneOffset.UTC);
-    createAuditService = new CreateAuditService(auditRepositoryPort, fixedClock);
+    createAuditService = new CreateAuditService(
+        auditRepositoryPort,
+        auditProcessingPublisherPort,
+        new SimpleMeterRegistry(),
+        fixedClock
+    );
   }
 
   @Test

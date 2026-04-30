@@ -75,7 +75,7 @@ export class AuditPageComponent {
       return;
     }
     this.isSubmitting = true;
-    this.http.post<{ id: string }>('http://localhost:8080/api/audits', this.form.getRawValue()).subscribe({
+    this.http.post<{ id: string }>('http://localhost:8080/api/v1/audits', this.form.getRawValue()).subscribe({
       next: (response) => {
         this.lastCreatedId = response.id;
         this.form.reset();
