@@ -1,11 +1,15 @@
 package com.auditai.app.config;
 
+import com.auditai.app.audit.infrastructure.messaging.AuditRabbitErrorHandler;
 import com.auditai.app.config.properties.AuditProcessingProperties;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.listener.ConditionalRejectingErrorHandler;
 import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -80,5 +84,24 @@ public class RabbitConfig {
   @Bean
   JacksonJsonMessageConverter jacksonJsonMessageConverter() {
     return new JacksonJsonMessageConverter();
+  }
+
+  @Bean
+  ConditionalRejectingErrorHandler rabbitListenerErrorHandler() {
+    return new AuditRabbitErrorHandler();
+  }
+
+  @Bean
+  SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
+      ConnectionFactory connectionFactory,
+      JacksonJsonMessageConverter messageConverter,
+      ConditionalRejectingErrorHandler rabbitListenerErrorHandler
+  ) {
+    SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+    factory.setConnectionFactory(connectionFactory);
+    factory.setMessageConverter(messageConverter);
+    factory.setDefaultRequeueRejected(false);
+    factory.setErrorHandler(rabbitListenerErrorHandler);
+    return factory;
   }
 }
