@@ -1,13 +1,11 @@
 package com.auditai.app.audit.infrastructure.messaging;
 
 import com.auditai.app.audit.application.exception.AiProviderUnavailableException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.listener.ConditionalRejectingErrorHandler;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class AuditRabbitErrorHandler extends ConditionalRejectingErrorHandler {
-
-  private static final Logger log = LoggerFactory.getLogger(AuditRabbitErrorHandler.class);
 
   @Override
   protected void log(Throwable throwable) {
