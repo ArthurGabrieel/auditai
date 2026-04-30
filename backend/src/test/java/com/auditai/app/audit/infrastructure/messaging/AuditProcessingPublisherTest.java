@@ -24,7 +24,13 @@ class AuditProcessingPublisherTest {
         "audit.exchange",
         "audit.process",
         "audit.process",
-        "audit.process.dlq"
+        "audit.process.r1",
+        "audit.process.r1",
+        "audit.process.dlq",
+        "audit.retry.exchange",
+        "audit.process.retry.1",
+        "audit.process.retry.1",
+        30000
     );
     auditProcessingPublisher = new AuditProcessingPublisher(rabbitTemplate, properties);
   }

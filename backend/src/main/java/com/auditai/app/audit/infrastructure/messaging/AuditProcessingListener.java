@@ -4,6 +4,8 @@ import com.auditai.app.audit.application.service.AuditProcessingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
+import org.springframework.amqp.support.AmqpHeaders;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
@@ -14,34 +16,19 @@ public class AuditProcessingListener {
 
   private final AuditProcessingService auditProcessingService;
 
-  @RabbitListener(queues = "${app.audit.processing.queue}")
-  public void handle(AuditProcessMessage message) {
+  @RabbitListener(queues = {
+      "${app.audit.processing.queue}",
+      "${app.audit.processing.retry-processing-queue-1}"
+  })
+  public void handle(
+      AuditProcessMessage message,
+      @Header(name = AmqpHeaders.CONSUMER_QUEUE, required = false) String queue
+  ) {
     String asyncRequestId = "amqp-" + message.auditId();
     MDC.put("requestId", asyncRequestId);
     try {
-      log.info("audit_message_received auditId={}", message.auditId());
-      int attempts = 0;
-      long delayMs = 1000L;
-      while (true) {
-        attempts++;
-        try {
-          auditProcessingService.process(message.auditId());
-          return;
-        } catch (RuntimeException ex) {
-          if (attempts >= 3) {
-            log.error("audit_processing_failed auditId={} attempts={}", message.auditId(), attempts, ex);
-            throw ex;
-          }
-          log.warn("audit_processing_retry auditId={} attempt={} nextDelayMs={}", message.auditId(), attempts, delayMs);
-          try {
-            Thread.sleep(delayMs);
-          } catch (InterruptedException interruptedException) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("Retry interrupted", interruptedException);
-          }
-          delayMs *= 2;
-        }
-      }
+      log.info("audit_message_received auditId={} queue={}", message.auditId(), queue);
+      auditProcessingService.process(message.auditId());
     } finally {
       MDC.remove("requestId");
     }

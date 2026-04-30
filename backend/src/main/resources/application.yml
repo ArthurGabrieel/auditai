@@ -56,4 +56,10 @@ app:
       exchange: audit.exchange
       routing-key: audit.process
       queue: audit.process
+      retry-processing-routing-key-1: audit.process.r1
+      retry-processing-queue-1: audit.process.r1
       dlq: audit.process.dlq
+      retry-exchange: audit.retry.exchange
+      retry-routing-key-1: audit.process.retry.1
+      retry-queue-1: audit.process.retry.1
+      retry-delay-1-ms: 30000

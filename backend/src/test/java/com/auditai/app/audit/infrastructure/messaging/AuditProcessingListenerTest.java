@@ -2,7 +2,6 @@ package com.auditai.app.audit.infrastructure.messaging;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -31,32 +30,22 @@ class AuditProcessingListenerTest {
     UUID auditId = UUID.randomUUID();
     doNothing().when(auditProcessingService).process(auditId);
 
-    listener.handle(new AuditProcessMessage(auditId));
+    listener.handle(new AuditProcessMessage(auditId), "audit.process");
 
     verify(auditProcessingService, times(1)).process(auditId);
   }
 
   @Test
-  void shouldRetryAndSucceedOnThirdAttempt() {
+  void shouldPropagateExceptionForBrokerDrivenRetry() {
     UUID auditId = UUID.randomUUID();
-    doThrow(new RuntimeException("temporary 1"))
-        .doThrow(new RuntimeException("temporary 2"))
-        .doNothing()
-        .when(auditProcessingService).process(auditId);
+    RuntimeException expected = new RuntimeException("always failing");
+    org.mockito.Mockito.doThrow(expected).when(auditProcessingService).process(auditId);
 
-    listener.handle(new AuditProcessMessage(auditId));
-
-    verify(auditProcessingService, times(3)).process(auditId);
-  }
-
-  @Test
-  void shouldFailAfterThreeAttempts() {
-    UUID auditId = UUID.randomUUID();
-    doThrow(new RuntimeException("always failing"))
-        .when(auditProcessingService).process(auditId);
-
-    assertThrows(RuntimeException.class, () -> listener.handle(new AuditProcessMessage(auditId)));
-
-    verify(auditProcessingService, times(3)).process(auditId);
+    RuntimeException thrown = assertThrows(
+        RuntimeException.class,
+        () -> listener.handle(new AuditProcessMessage(auditId), "audit.process")
+    );
+    org.junit.jupiter.api.Assertions.assertSame(expected, thrown);
+    verify(auditProcessingService, times(1)).process(auditId);
   }
 }

@@ -25,10 +25,46 @@
       "defaultValue": "audit.process"
     },
     {
+      "name": "app.audit.processing.retry-processing-routing-key-1",
+      "type": "java.lang.String",
+      "description": "Routing key for retry processing stage.",
+      "defaultValue": "audit.process.r1"
+    },
+    {
+      "name": "app.audit.processing.retry-processing-queue-1",
+      "type": "java.lang.String",
+      "description": "Queue for retry processing stage.",
+      "defaultValue": "audit.process.r1"
+    },
+    {
       "name": "app.audit.processing.dlq",
       "type": "java.lang.String",
       "description": "Dead letter queue name for audit processing failures.",
       "defaultValue": "audit.process.dlq"
+    },
+    {
+      "name": "app.audit.processing.retry-exchange",
+      "type": "java.lang.String",
+      "description": "Retry exchange for delayed reprocessing.",
+      "defaultValue": "audit.retry.exchange"
+    },
+    {
+      "name": "app.audit.processing.retry-routing-key-1",
+      "type": "java.lang.String",
+      "description": "Routing key used to route retry messages.",
+      "defaultValue": "audit.process.retry.1"
+    },
+    {
+      "name": "app.audit.processing.retry-queue-1",
+      "type": "java.lang.String",
+      "description": "Retry queue with TTL for delayed retries.",
+      "defaultValue": "audit.process.retry.1"
+    },
+    {
+      "name": "app.audit.processing.retry-delay-1-ms",
+      "type": "java.lang.Long",
+      "description": "Retry delay in milliseconds.",
+      "defaultValue": 30000
     }
   ]
 }
