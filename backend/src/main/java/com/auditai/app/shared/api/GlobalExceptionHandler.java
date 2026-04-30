@@ -1,5 +1,6 @@
 package com.auditai.app.shared.api;
 
+import com.auditai.app.audit.domain.AuditNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.time.OffsetDateTime;
@@ -14,6 +15,22 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+  @ExceptionHandler(AuditNotFoundException.class)
+  public ResponseEntity<ApiErrorResponse> handleNotFound(
+      AuditNotFoundException ex,
+      HttpServletRequest request
+  ) {
+    ApiErrorResponse response = new ApiErrorResponse(
+        OffsetDateTime.now(),
+        HttpStatus.NOT_FOUND.value(),
+        HttpStatus.NOT_FOUND.getReasonPhrase(),
+        ex.getMessage(),
+        request.getRequestURI(),
+        Map.of()
+    );
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+  }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ApiErrorResponse> handleValidationException(

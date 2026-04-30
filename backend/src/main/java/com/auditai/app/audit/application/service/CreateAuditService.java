@@ -15,6 +15,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 @RequiredArgsConstructor
@@ -38,7 +40,7 @@ public class CreateAuditService implements CreateAuditUseCase {
         .build();
     Audit saved = auditRepositoryPort.save(audit);
 
-    auditProcessingPublisherPort.publish(saved.getId());
+    publishAfterCommit(saved.getId());
     
     Counter.builder("audits_created_total")
         .description("Number of audits created")
@@ -46,5 +48,18 @@ public class CreateAuditService implements CreateAuditUseCase {
         .increment();
     log.info("audit_created auditId={} status={}", saved.getId(), saved.getStatus());
     return saved;
+  }
+
+  private void publishAfterCommit(UUID auditId) {
+    if (TransactionSynchronizationManager.isSynchronizationActive()) {
+      TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+        @Override
+        public void afterCommit() {
+          auditProcessingPublisherPort.publish(auditId);
+        }
+      });
+      return;
+    }
+    auditProcessingPublisherPort.publish(auditId);
   }
 }
