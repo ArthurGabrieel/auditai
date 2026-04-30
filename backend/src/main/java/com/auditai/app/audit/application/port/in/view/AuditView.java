@@ -1,10 +1,10 @@
-package com.auditai.app.audit.api;
+package com.auditai.app.audit.application.port.in.view;
 
 import com.auditai.app.audit.domain.AuditStatus;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-public record AuditResponse(
+public record AuditView(
     UUID id,
     String timeLogContent,
     AuditStatus status,

@@ -5,8 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.auditai.app.audit.application.port.in.CreateAuditUseCase;
 import com.auditai.app.audit.application.port.in.command.CreateAuditCommand;
+import com.auditai.app.audit.application.port.in.view.CreateAuditView;
 import com.auditai.app.audit.application.port.out.AuditRepositoryPort;
-import com.auditai.app.audit.domain.Audit;
 import com.auditai.app.audit.domain.AuditStatus;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -54,8 +54,8 @@ class AuditIntegrationTest {
 
   @Test
   void shouldCreateAndPersistAudit() {
-    Audit created = createAuditUseCase.create(new CreateAuditCommand("time log sample"));
-    UUID id = created.getId();
+    CreateAuditView created = createAuditUseCase.create(new CreateAuditCommand("time log sample"));
+    UUID id = created.id();
 
     assertTrue(auditRepositoryPort.findById(id).isPresent());
     assertEquals(AuditStatus.PENDING, auditRepositoryPort.findById(id).orElseThrow().getStatus());

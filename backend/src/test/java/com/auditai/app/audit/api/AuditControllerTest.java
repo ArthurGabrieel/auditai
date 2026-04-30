@@ -9,8 +9,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.auditai.app.audit.application.port.in.CreateAuditUseCase;
-import com.auditai.app.audit.application.service.AuditQueryService;
-import com.auditai.app.audit.domain.Audit;
+import com.auditai.app.audit.application.port.in.AuditQueryUseCase;
+import com.auditai.app.audit.application.port.in.view.AuditView;
+import com.auditai.app.audit.application.port.in.view.CreateAuditView;
 import com.auditai.app.audit.domain.AuditNotFoundException;
 import com.auditai.app.audit.domain.AuditStatus;
 import com.auditai.app.shared.api.GlobalExceptionHandler;
@@ -30,14 +31,14 @@ class AuditControllerTest {
   private MockMvc mockMvc;
   private ObjectMapper objectMapper;
   private CreateAuditUseCase createAuditUseCase;
-  private AuditQueryService auditQueryService;
+  private AuditQueryUseCase auditQueryUseCase;
 
   @BeforeEach
   void setUp() {
     objectMapper = new ObjectMapper();
     createAuditUseCase = Mockito.mock(CreateAuditUseCase.class);
-    auditQueryService = Mockito.mock(AuditQueryService.class);
-    AuditController controller = new AuditController(createAuditUseCase, auditQueryService);
+    auditQueryUseCase = Mockito.mock(AuditQueryUseCase.class);
+    AuditController controller = new AuditController(createAuditUseCase, auditQueryUseCase);
     mockMvc = MockMvcBuilders.standaloneSetup(controller)
         .setControllerAdvice(new GlobalExceptionHandler())
         .build();
@@ -45,11 +46,11 @@ class AuditControllerTest {
 
   @Test
   void shouldReturn202WhenPayloadIsValid() throws Exception {
-    Audit audit = Audit.builder()
-        .id(UUID.fromString("11111111-1111-1111-1111-111111111111"))
-        .status(AuditStatus.PENDING)
-        .createdAt(LocalDateTime.of(2026, 4, 29, 20, 0, 0))
-        .build();
+    CreateAuditView audit = new CreateAuditView(
+        UUID.fromString("11111111-1111-1111-1111-111111111111"),
+        AuditStatus.PENDING,
+        LocalDateTime.of(2026, 4, 29, 20, 0, 0)
+    );
     when(createAuditUseCase.create(any())).thenReturn(audit);
 
     mockMvc.perform(post("/v1/audits")
@@ -74,13 +75,17 @@ class AuditControllerTest {
   @Test
   void shouldReturnAuditById() throws Exception {
     UUID id = UUID.fromString("11111111-1111-1111-1111-111111111111");
-    Audit audit = Audit.builder()
-        .id(id)
-        .timeLogContent("sample")
-        .status(AuditStatus.COMPLETED)
-        .createdAt(LocalDateTime.of(2026, 4, 29, 20, 0, 0))
-        .build();
-    when(auditQueryService.getById(id)).thenReturn(audit);
+    AuditView audit = new AuditView(
+        id,
+        "sample",
+        AuditStatus.COMPLETED,
+        null,
+        null,
+        1,
+        LocalDateTime.of(2026, 4, 29, 20, 0, 0),
+        LocalDateTime.of(2026, 4, 29, 20, 10, 0)
+    );
+    when(auditQueryUseCase.getById(id)).thenReturn(audit);
 
     mockMvc.perform(get("/v1/audits/{id}", id))
         .andExpect(status().isOk())
@@ -91,7 +96,7 @@ class AuditControllerTest {
   @Test
   void shouldReturn404WhenAuditDoesNotExist() throws Exception {
     UUID id = UUID.fromString("22222222-2222-2222-2222-222222222222");
-    when(auditQueryService.getById(id)).thenThrow(new AuditNotFoundException(id));
+    when(auditQueryUseCase.getById(id)).thenThrow(new AuditNotFoundException(id));
 
     mockMvc.perform(get("/v1/audits/{id}", id))
         .andExpect(status().isNotFound())
@@ -100,13 +105,17 @@ class AuditControllerTest {
 
   @Test
   void shouldListAudits() throws Exception {
-    Audit audit = Audit.builder()
-        .id(UUID.fromString("33333333-3333-3333-3333-333333333333"))
-        .timeLogContent("sample")
-        .status(AuditStatus.PENDING)
-        .createdAt(LocalDateTime.of(2026, 4, 29, 20, 0, 0))
-        .build();
-    when(auditQueryService.list(eq(null))).thenReturn(List.of(audit));
+    AuditView audit = new AuditView(
+        UUID.fromString("33333333-3333-3333-3333-333333333333"),
+        "sample",
+        AuditStatus.PENDING,
+        null,
+        null,
+        0,
+        LocalDateTime.of(2026, 4, 29, 20, 0, 0),
+        null
+    );
+    when(auditQueryUseCase.list(eq(null))).thenReturn(List.of(audit));
 
     mockMvc.perform(get("/v1/audits"))
         .andExpect(status().isOk())

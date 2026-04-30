@@ -1,5 +1,6 @@
 package com.auditai.app.audit.api;
 
+import com.auditai.app.audit.application.port.in.command.CreateAuditCommand;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -8,4 +9,8 @@ public record CreateAuditRequest(
     @Size(min = 1, max = 20000, message = "timeLogContent must have between 1 and 20000 characters")
     String timeLogContent
 ) {
+
+  public CreateAuditCommand toCommand() {
+    return new CreateAuditCommand(timeLogContent);
+  }
 }

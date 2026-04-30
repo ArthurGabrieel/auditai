@@ -1,9 +1,9 @@
 package com.auditai.app.audit.api;
 
 import com.auditai.app.audit.application.port.in.CreateAuditUseCase;
-import com.auditai.app.audit.application.port.in.command.CreateAuditCommand;
-import com.auditai.app.audit.application.service.AuditQueryService;
-import com.auditai.app.audit.domain.Audit;
+import com.auditai.app.audit.application.port.in.AuditQueryUseCase;
+import com.auditai.app.audit.application.port.in.view.AuditView;
+import com.auditai.app.audit.application.port.in.view.CreateAuditView;
 import com.auditai.app.audit.domain.AuditStatus;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
@@ -25,54 +25,35 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuditController {
 
   private final CreateAuditUseCase createAuditUseCase;
-  private final AuditQueryService auditQueryService;
+  private final AuditQueryUseCase auditQueryUseCase;
 
-  public AuditController(CreateAuditUseCase createAuditUseCase, AuditQueryService auditQueryService) {
+  public AuditController(
+      CreateAuditUseCase createAuditUseCase,
+      AuditQueryUseCase auditQueryUseCase
+  ) {
     this.createAuditUseCase = createAuditUseCase;
-    this.auditQueryService = auditQueryService;
+    this.auditQueryUseCase = auditQueryUseCase;
   }
 
   @PostMapping
   @Operation(summary = "Create a new audit and enqueue it for asynchronous processing")
-  public ResponseEntity<CreateAuditResponse> create(@Valid @RequestBody CreateAuditRequest request) {
-    Audit audit = createAuditUseCase.create(new CreateAuditCommand(request.timeLogContent()));
-    CreateAuditResponse response = new CreateAuditResponse(
-        audit.getId(),
-        audit.getStatus(),
-        audit.getCreatedAt()
-    );
+  public ResponseEntity<CreateAuditView> create(@Valid @RequestBody CreateAuditRequest request) {
+    CreateAuditView response = createAuditUseCase.create(request.toCommand());
     return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
   }
 
   @GetMapping("/{id}")
   @Operation(summary = "Get a single audit by id")
-  public ResponseEntity<AuditResponse> getById(@PathVariable UUID id) {
-    Audit audit = auditQueryService.getById(id);
-    return ResponseEntity.ok(toResponse(audit));
+  public ResponseEntity<AuditView> getById(@PathVariable UUID id) {
+    return ResponseEntity.ok(auditQueryUseCase.getById(id));
   }
 
   @GetMapping
   @Operation(summary = "List audits with optional status filter")
-  public ResponseEntity<List<AuditResponse>> list(
+  public ResponseEntity<List<AuditView>> list(
       @Parameter(description = "Optional status filter")
       @RequestParam(required = false) AuditStatus status
   ) {
-    List<AuditResponse> response = auditQueryService.list(status).stream()
-        .map(this::toResponse)
-        .toList();
-    return ResponseEntity.ok(response);
-  }
-
-  private AuditResponse toResponse(Audit audit) {
-    return new AuditResponse(
-        audit.getId(),
-        audit.getTimeLogContent(),
-        audit.getStatus(),
-        audit.getAiOpinion(),
-        audit.getErrorReason(),
-        audit.getProcessingAttempts(),
-        audit.getCreatedAt(),
-        audit.getCompletedAt()
-    );
+    return ResponseEntity.ok(auditQueryUseCase.list(status));
   }
 }
